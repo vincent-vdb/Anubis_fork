@@ -1,8 +1,10 @@
 # Made by 0sir1ss @ https://github.com/0sir1ss/Anubis
-import ast, io, tokenize, os, sys, platform, re, random, string, base64, hashlib, subprocess, requests
+import ast, io, tokenize, os, sys, platform, re, random, string, base64, hashlib, subprocess, requests, time
+from pathlib import Path
 from regex import F
 from Crypto import Random
 from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
 
 is_windows = True if platform.system() == "Windows" else False
 
@@ -345,7 +347,11 @@ class Encryption:
         raw = self._pad(str(raw))
         iv = Random.new().read(AES.block_size)
         cipher = AES.new(self.key, AES.MODE_CBC, iv)
-        return base64.b64encode(iv + cipher.encrypt(raw.encode())).decode()
+        try:
+            res = base64.b64encode(iv + cipher.encrypt(raw.encode())).decode()
+        except ValueError:
+            res = base64.b64encode(iv + cipher.encrypt(pad(raw.encode(), AES.block_size))).decode()
+        return res
 
     def _pad(self, s):
         return s + (self.bs - len(s) % self.bs) * chr(self.bs - len(s) % self.bs)
@@ -382,8 +388,8 @@ banner = f"""
 clear()
 print(water(banner), end="")
 while True:
-    file = input(purple("        [>] Enter the python file you wish to obfuscate [script.py] : ") + "\033[38;2;148;0;230m")
-    if not os.path.exists(file):
+    path = input(purple("        [>] Enter the python file you wish to obfuscate [script.py] : ") + "\033[38;2;148;0;230m")
+    if not os.path.exists(path):
         print(red("        [!] Error : That file does not exist"), end="")
     else:
         break
@@ -451,27 +457,45 @@ while True:
         print(red(f"        [!] Error : Invalid option [y/n]"), end="")
 
 print(" ")
-key = base64.b64encode(os.urandom(32)).decode()
-with open(file, "r", encoding='utf-8') as f:
-    src = f.read()
+print(path)
 
-if junk:
-    src = anubis(src)
-if bug:
-    src = bugs(src)
-if junk:
-    src = anubis(src)
-if carbonate:
-    src = carbon(src)
-if oxy:
-    src = oxyry(src)
-if extra:
-    src = Encryption(key.encode()).write(key, src)
+for file in Path(path).rglob("*.py"):
+    print(file)
+    output_file = str(file).split(path)[-1]
+    output_path = f"{path}/obsc{output_file}"
+    if 'obsc' in str(file):
+        continue
+    if os.path.exists(output_path):
+        continue
+    key = base64.b64encode(os.urandom(32)).decode()
+    with open(file, "r", encoding='utf-8') as f:
+        src = f.read()
 
+    if junk:
+        src = anubis(src)
+    if bug:
+        src = bugs(src)
+    if junk:
+        src = anubis(src)
+    if carbonate:
+        src = carbon(src)
+    if oxy:
+        src = oxyry(src)
+    if extra:
+        src = Encryption(key.encode()).write(key, src)
+    if not os.path.isdir("./obsc"):
+        os.mkdir("./obsc")
+        time.sleep(1)
 
-name = f"{file[:-3]}-obf.py"
-with open(name, "w", encoding='utf-8') as f:
-    f.write(src)
+    write_dir = '/'.join(output_path.split('/')[:-1])
+    if not os.path.exists(write_dir):
+        folders = write_dir.split('/')
+        for i in range(1, len(folders)):
+            tmp_dir = '/'.join(folders[:i+1])
+            if not os.path.exists(tmp_dir):
+                os.mkdir(tmp_dir)
+    with open(output_path, "w", encoding='utf-8') as f:
+        f.write(src)
 
 print(blue(f"        [>] Code has been successfully obfuscated @ {name}"), end="")
 
